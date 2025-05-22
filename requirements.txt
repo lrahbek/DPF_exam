@@ -7,4 +7,5 @@ matplotlib
 gdown
 pyarrow
 seaborn
+graph_tools
 pooch
