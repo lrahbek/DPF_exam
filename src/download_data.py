@@ -8,7 +8,6 @@ import itertools
 from pooch import DOIDownloader
 
 
-
 def download_chorus(data_path = "data/chorus"):
     """ 
     Download Chorus data: Hall, Galen, Joshua Basseches, Rebecca Bromley-Trujillo, and Trevor Culhane. 2023. 
