@@ -1,11 +1,10 @@
 pandas
 numpy
 scikit-learn
-networkx
 tqdm
 matplotlib
 gdown
 pyarrow
 seaborn
-graph_tools
 pooch
+jupyter

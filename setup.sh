@@ -5,13 +5,13 @@ source ./env/bin/activate
 #find dependencies and install requirements 
 pip install --upgrade pip
 sudo apt-get update
-#graph tools
-#sudo apt-get python3-graph-tool
 #pip install pipreqs
 #pipreqs src --savepath requirements.txt
 pip install -r requirements.txt
 #make env avaible in nb
 python -m pip install ipykernel
+python -m pip install ipywidgets
+
 python -m ipykernel install --user --name=env
 
 #exit the virtual environment
