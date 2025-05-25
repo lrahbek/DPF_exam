@@ -8,3 +8,4 @@ pyarrow
 seaborn
 pooch
 jupyter
+cloudpickle 
