@@ -39,13 +39,32 @@ def download_shormccarty(data_path = "../data/raw/shormccarty/state_ideology.tab
     return print(f"file saved correctly at {data_path}: {os.path.exists(data_path)}")
 
 
-def clean_bills(bills, states_list, times_ranges_list):
+def preprocess_descr(bills_sub, state_name_dicts):
+    """ Preprocess text in description column """ 
+    descr = bills_sub["description"]
+
+    for i in range(len(descr)): 
+        descr_i = descr[i]
+        descr_i = descr_i.lower()                      #make lowercase
+        descr_i  = re.sub(r'\d+|[^\w\s]', '', descr_i) #remove numbers and punctuation
+        st = bills_sub['state'].map(state_name_dicts)[i]#define state of given bill
+        if st in descr_i:                               #remove mentions of state of bill
+            descr_i = descr_i.replace(st, "")   
+        descr_i = re.sub(r' +', ' ', descr_i)           #remove excess white space 
+        descr[i] = descr_i
+
+    bills_sub["descr_pre"] = descr
+    return bills_sub
+
+
+def clean_bills(bills, states_list, times_ranges_list, state_name_dicts):
     """ 
     Bills are subsetted according to the following: 
     - bills from states in 'states_list' are kept.
     - bills within time ranges from 'times_ranges_list' are kept.
     - bills where 'status' isn't avaible are removed 
     - bill duplicates are removed.
+    - rows where no description was recorded (77) were removed 
 
     'ncsl_metatopics' and 'ncsl_topics' are split into lists and a column 'pass' is defined based
     on the 'status' column. from the column 'bill_chamber', the chamber of the given bill is
@@ -84,8 +103,11 @@ def clean_bills(bills, states_list, times_ranges_list):
     #extract bill chamber
     bills_sub["cha"] = bills_sub["bill_chamber"].apply(lambda x: "H" if x[0] == "H" or x[0] == "A" else "S")
     #keep relevant columns: 
+    bills_sub = bills_sub[bills_sub["description"].notna()]   #remove rows where description is na
+
     bills_sub = bills_sub[["state_unified_bill_id", "pass",  "state", "ncsl_topics", 
-                           "ncsl_metatopics", "year", "bill_chamber", "cha"]]
+                           "ncsl_metatopics", "year", "bill_chamber", "cha", "description"]]
+    bills_sub = preprocess_descr(bills_sub, state_name_dicts) #preprocess text in description
     print("bills cleaned")
     return bills_sub
 
@@ -226,18 +248,20 @@ def main():
     ideology = pd.read_csv("../data/raw/shormccarty/state_ideology.tab", sep='\t')
     #def subset rules
     states_lobby = ["IA", "MA", "NE", "NJ", "RI", "WI"] 
+    state_name_dicts = dict(zip(states_lobby, ["iowa", "massachusetts", "nebraska", "new jersey", "rhode island", "wisconsin"]))
     time_ranges = [range(2009, 2021), range(2009, 2021), range(2010, 2021), 
                range(2014, 2021), range(2018, 2021), range(2009, 2021)]
     #clean bills
-    bills_sub = clean_bills(bills, states_lobby, time_ranges)
+    bills_sub = clean_bills(bills, states_lobby, time_ranges, state_name_dicts)
     #clean ideology 
     bills_ide = clean_ideology(ideology, bills_sub, states_lobby)
     #clean positions
     positions_sub = clean_positions(positions, bills_sub, states_lobby, time_ranges)
     #clean blocks 
-    positions_blocks = clean_blocks(blocks, positions_sub, states_lobby)
 
-    block_array, block1_ls, bill_ls = extract_block_counts(bills_ide, positions_blocks)
+    ##OBBS UNCOMMENT
+    #positions_blocks = clean_blocks(blocks, positions_sub, states_lobby)
+    #block_array, block1_ls, bill_ls = extract_block_counts(bills_ide, positions_blocks)
 
     #split bills data and save 
     y = bills_ide["pass"]

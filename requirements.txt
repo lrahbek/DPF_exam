@@ -9,3 +9,4 @@ seaborn
 pooch
 jupyter
 cloudpickle 
+nltk
