@@ -178,3 +178,4 @@ cython_debug/
 data/*
 !data/.gitkeep
 git_setup.sh
+out/models/

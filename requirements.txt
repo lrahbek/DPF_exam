@@ -9,4 +9,7 @@ seaborn
 pooch
 jupyter
 cloudpickle 
+spacy
 nltk
+en_core_web_sm
+#python -m spacy download en_core_web_sm
