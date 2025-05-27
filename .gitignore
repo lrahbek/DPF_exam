@@ -179,3 +179,4 @@ data/*
 !data/.gitkeep
 git_setup.sh
 out/models/
+src/trash

@@ -15,9 +15,9 @@ import re
 
 def download_chorus(data_path = "data/raw/chorus"):
     """ 
-    Download Chorus data: Hall, Galen, Joshua Basseches, Rebecca Bromley-Trujillo, and Trevor Culhane. 2023. 
-    "CHORUS: A new dataset of state interest group policy positions in the United States." State Politics & 
-    Policy Quarterly. Forthcoming 2023.
+    Download Chorus data: Hall, Galen, Joshua Basseches, Rebecca Bromley-Trujillo, and Trevor 
+    Culhane. 2023. "CHORUS: A new dataset of state interest group policy positions in the 
+    United States." State Politics & Policy Quarterly. Forthcoming 2023.
     """
     path = pathlib.Path(data_path)
     path.mkdir(exist_ok=True)
@@ -25,30 +25,16 @@ def download_chorus(data_path = "data/raw/chorus"):
     gdown.download_folder(data_url, output = data_path)
     return print(f"Data downloaded from google drive to {data_path}")
 
-
 def download_shormccarty(data_path = "data/raw/shormccarty/state_ideology.tab"):
     """
-    Download data: Shor, Boris, 2023, "Aggregate State Legislator Shor-McCarty Ideology Data, April 2023 update",
-    https://doi.org/10.7910/DVN/WI8ERB, Harvard Dataverse.
+    Download data: Shor, Boris, 2023, "Aggregate State Legislator Shor-McCarty Ideology Data,
+    April 2023 update", https://doi.org/10.7910/DVN/WI8ERB, Harvard Dataverse.
     """
     downloader = pooch.DOIDownloader()
     url = "doi:10.7910/DVN/WI8ERB/shor mccarty 1993-2020 state aggregate data April 2023 release.tab"
     downloader(url=url, output_file=data_path, pooch=None)
     return print(f"file saved correctly at {data_path}: {os.path.exists(data_path)}")
 
-def preprocess_descr(descr_col, state_col, state_name_dicts):
-    """ Preprocess text in description column """ 
-    descr = descr_col.copy()
-    for i in tqdm(range(len(descr_col)),desc="cleaning description column"): 
-        descr_i = descr[i]
-        descr_i = descr_i.lower()                      #make lowercase
-        descr_i  = re.sub(r'\d+|[^\w\s]', '', descr_i) #remove numbers and punctuation
-        st = state_col.map(state_name_dicts)[i]        #define state of given bill
-        if st in descr_i:                              #remove mentions of state of bill
-            descr_i = descr_i.replace(st, "")   
-        descr_i = re.sub(r' +', ' ', descr_i)          #remove excess white space 
-        descr[i] = descr_i
-    return descr
 
 def clean_bills(bills, states_list, times_ranges_list, state_name_dicts):
     """ 
@@ -57,21 +43,20 @@ def clean_bills(bills, states_list, times_ranges_list, state_name_dicts):
     - bills within time ranges from 'times_ranges_list' are kept.
     - bills where 'status' isn't avaible are removed 
     - bill duplicates are removed.
-    - rows where no description was recorded (77) were removed 
-    'ncsl_metatopics' are split into lists and a column 'pass' is defined based on the 
-    'status' column. From the column 'bill_chamber', the chamber of the given bill is
-    extracted (col: 'cha'). The cleaned Bills dataframe is returned with the columns: 
-    "state_unified_bill_id", "pass",  "state", "ncsl_metatopics", "year", "bill_chamber", 
-    "cha", "description", "descr_prep"
+    'pass' is defined based on the 'status' column. From the column 'bill_chamber', the 
+    chamber of the given bill is extracted (col: 'cha'). The cleaned Bills dataframe is 
+    returned with the columns: "state_unified_bill_id", "pass",  "state", "ncsl_metatopics",
+    "year", "bill_chamber", "cha". ('ncsl_metatopics' are split into lists and a column)
     """
-    bills_sub = bills[bills["state"].isin(states_list)]       #subset states with lobby records
-    bills_sub = bills_sub[bills_sub["status"].notna()]        #remove rows with no status metadata
-    bills_sub.drop_duplicates(subset="state_unified_bill_id", #remove rows with duplicate bill ids
+    bills_sub = bills[bills["state"].isin(states_list)]      #subset states with lobby records
+    bills_sub = bills_sub[bills_sub["status"].notna()]       #remove rows with no status metadata
+    bills_sub.drop_duplicates(subset="state_unified_bill_id",#remove rows with duplicate bill ids
                               ignore_index=True, inplace=True)
     #define bill year: 
     bills_sub["year"] = bills_sub["last_action_date"].str.split(r"-", expand=True)[0]   
-    bills_sub.loc[bills_sub[bills_sub["year"].isin([None, "0000", "1969"])].index, "year"] = bills_sub[
-        bills_sub["year"].isin([None, "0000", "1969"])]["state_unified_bill_id"].str.split("_", expand=True)[3]
+    bills_sub.loc[bills_sub[bills_sub["year"].isin(
+        [None, "0000", "1969"])].index, "year"] = bills_sub[bills_sub["year"].isin(
+            [None, "0000", "1969"])]["state_unified_bill_id"].str.split("_", expand=True)[3]
     bills_sub["year"] = bills_sub["year"].astype("int32")
     #define indices of bills to keep (according to states_list and time_ranges)
     keep_ind = []
@@ -86,35 +71,32 @@ def clean_bills(bills, states_list, times_ranges_list, state_name_dicts):
     bills_sub = bills_sub.replace(to_replace={"ncsl_metatopics":{None: list(["M"])}})
     bills_sub["ncsl_metatopics"] = bills_sub["ncsl_metatopics"].str.split("; ") #split topics into lists 
     #extract bill chamber
-    bills_sub["cha"] = bills_sub["bill_chamber"].apply(lambda x: "H" if x[0] == "H" or x[0] == "A" else "S")
-    bills_sub = bills_sub[bills_sub["description"].notna()].reset_index()   #remove rows where description is na
-    bills_sub["descr_prep"] = preprocess_descr(bills_sub["description"], 
-                                               bills_sub["state"],
-                                               state_name_dicts) #preprocess text in description
+    bills_sub["cha"] = bills_sub["bill_chamber"].apply(
+        lambda x: "H" if x[0] == "H" or x[0] == "A" else "S")
     #keep relevant columns:
-    bills_sub = bills_sub[["state_unified_bill_id", "pass",  "state", "descr_prep",
-                           "ncsl_metatopics", "year", "bill_chamber", "cha", "description"]]
-
+    bills_sub = bills_sub[["state_unified_bill_id", "pass",  "state", "ncsl_metatopics", 
+                           "year", "bill_chamber", "cha"]]
     print("bills cleaned")
     return bills_sub
+
 
 def clean_ideology(ideology, bills_sub, states_list):
     """
     Ideology data is subsetted according to the following: 
     - Data from states in 'states_list' are kept
     - Subset years (roughly)
-    Column 'st' is renamed to 'state' to be able to merge with other data
-    The data is split according to the chamber and the appended (on rows) - to create one row per
-    combination of chamber, year and state. 
-    The columns are kept: "state", "year", "*_chamber", "*_dem", "*_rep", "*_majority", "_*minority",
-    "*_dem_mean", "*_rep_mean", "*_diffs", "*_distance"
+    Column 'st' is renamed to 'state' to be able to merge with other data. The data is split
+    according to the chamber and the appended (on rows) - to create one row per combination 
+    of chamber, year and state. The columns are kept: "state", "year", "*_chamber", "*_dem",
+    "*_rep", "*_majority", "_*minority",  "*_dem_mean", "*_rep_mean", "*_diffs", "*_distance"
     returns a df merges with bills_sub
     """
     ideology_sub = ideology[ideology["st"].isin(states_list)]                #subset states  
     ideology_sub = ideology_sub[ideology_sub["year"].isin(range(2009, 2021))]#subset years
-    ideology_sub = ideology_sub[['st', 'year', 'hou_chamber', 'sen_chamber', 'hou_dem', 'hou_rep',
-    'hou_majority', 'hou_minority', 'hou_dem_mean', 'hou_rep_mean', 'sen_dem', 'sen_rep', 'sen_majority', 
-    'sen_minority', 'sen_dem_mean', 'sen_rep_mean', 'h_diffs', 's_diffs', 'h_distance', 's_distance']]
+    ideology_sub = ideology_sub[['st', 'year', 'hou_chamber', 'sen_chamber', 'hou_dem', 
+    'hou_rep', 'hou_majority', 'hou_minority', 'hou_dem_mean', 'hou_rep_mean', 'sen_dem', 
+    'sen_rep', 'sen_majority', 'sen_minority', 'sen_dem_mean', 'sen_rep_mean', 'h_diffs', 
+    's_diffs', 'h_distance', 's_distance']]
     ideology_sub = ideology_sub.rename(columns={"st": "state"}) #rename state col
     #split df and rbind
     sta_sen = ideology_sub.filter(regex=r'sen|s_|year|state').reset_index(drop=True)
@@ -125,7 +107,7 @@ def clean_ideology(ideology, bills_sub, states_list):
     sta_hou.columns = sta_hou.columns.str.removeprefix("hou_").str.removeprefix("h_")
     
     ideology_sub = pd.concat([sta_sen, sta_hou])  #concat!
-    bills_ide = bills_sub.merge(ideology_sub, on=["state", "year", "cha"]) #merge with bills sub
+    bills_ide = bills_sub.merge(ideology_sub, on=["state", "year", "cha"]) #merge with bills
     print("ideology cleaned")
     return bills_ide
 
@@ -171,20 +153,22 @@ def clean_blocks(blocks, positions_sub, states_list):
     blocks_sub = blocks_sub[blocks_sub["state"].isin(states_list)]                      #only states with lobby recs
     blocks_sub = blocks_sub[blocks_sub["state_client_id"].str.match(r"[A-Z][A-Z]_\d+")] #keep only rows with clients
     blocks_sub["block_1"] = blocks_sub["block_1"].astype(str)                           #change block_1 type to str
+    #some block values are repated across states:state abbr is appended to distinct between these
+    blocks_sub["block"] = blocks_sub["state"]+"_"+blocks_sub["block_1"]
     #merge blocks_sub and positions_sub
     positions_blocks = positions_sub.merge(
         blocks_sub, how="left", on=["state_client_id", "state"], indicator=True)
     #remove rows where no blocks have been assigned 
     positions_blocks = positions_blocks[positions_blocks["_merge"] == "both"]
     positions_blocks = positions_blocks[["state_unified_bill_id", "state_client_id", 
-        "position_numeric", "block_1"]].sort_values("state_unified_bill_id").reset_index(drop=True)
+        "position_numeric", "block"]].sort_values("state_unified_bill_id").reset_index(drop=True)
     print("blocks cleaned")
     return positions_blocks
 
 
 def extract_block_counts(bills_ide, positions_blocks, out_path):   
     #define output array and dimensions: 
-    block1_ls = positions_blocks["block_1"].unique()      #unique block1 values 
+    block1_ls = positions_blocks["block"].unique()      #unique block1 values 
     bill_ls = bills_ide["state_unified_bill_id"].unique() #unique bill ids 
     #emtpty array for block counts [support, neutral, oppose]
     block_array = np.zeros([len(bill_ls), len(block1_ls),3], dtype = np.int32) 
@@ -196,7 +180,7 @@ def extract_block_counts(bills_ide, positions_blocks, out_path):
         ind_bill = np.asarray(bill_ls == bill).nonzero()   # get index of bill in list
         #check if bill has been lobbied on: 
         block_counts = positions_blocks[positions_blocks[   # get block counts 
-                "state_unified_bill_id"]==bill].value_counts(["position_numeric", "block_1"])
+                "state_unified_bill_id"]==bill].value_counts(["position_numeric", "block"])
         if len(block_counts)>0:
             for j, (count, block) in enumerate(zip(block_counts.values, block_counts.index)):
                 ind_block = np.asarray(block1_ls == block[1]).nonzero() #get index of the block
@@ -227,7 +211,8 @@ def main():
     ideology = pd.read_csv("data/raw/shormccarty/state_ideology.tab", sep='\t')
     #def subset rules
     states_lobby = ["IA", "MA", "NE", "NJ", "RI", "WI"] 
-    state_name_dicts = dict(zip(states_lobby, ["iowa", "massachusetts", "nebraska", "new jersey", "rhode island", "wisconsin"]))
+    state_name_dicts = dict(zip(states_lobby, [
+        "iowa", "massachusetts", "nebraska", "new jersey", "rhode island", "wisconsin"]))
     time_ranges = [range(2009, 2021), range(2009, 2021), range(2010, 2021), 
                    range(2014, 2021), range(2018, 2021), range(2009, 2021)]
     #clean bills
@@ -238,12 +223,12 @@ def main():
     positions_sub = clean_positions(positions, bills_sub, states_lobby, time_ranges)
     #clean blocks 
     positions_blocks = clean_blocks(blocks, positions_sub, states_lobby)
-    block_array, block1_ls, bill_ls = extract_block_counts(bills_ide, positions_blocks, 
-                                                            out_path="data/preprocessed/block_array.pkl")
+    block_array, block1_ls, bill_ls = extract_block_counts(
+        bills_ide, positions_blocks, out_path="data/preprocessed/block_array.pkl")
 
     #split bills data and save 
     y = bills_ide["pass"]
-    X = bills_ide[["state", "descr_prep", "cha", "chamber", "dem", "rep", "majority", 
+    X = bills_ide[["state", "cha", "chamber", "dem", "rep", "majority", 
                    "minority", "dem_mean", "rep_mean", "diffs", "distance"]]
     with open("data/preprocessed/features.pkl", 'wb') as file:
         pkl.dump((X,y), file)
