@@ -37,7 +37,7 @@ def load_prepped_data(feature_path, block_path):
     X = X.join(block_df_split)
     return X, y, bill_ls
 
-def split_features(feature_path, block_path ):
+def split_features(feature_path, block_path, split_data_path):
     """
     Load data (X, y), perform random undersampling and split to train and test set
     """ 
@@ -51,6 +51,10 @@ def split_features(feature_path, block_path ):
     y_classes = lb.classes_              # extract classes (y)
     X_train, X_test, y_train, y_test = train_test_split(
         X_rs, y_rs, random_state=104, test_size=0.20, shuffle=True, stratify=y_rs)
+    
+    with open(split_data_path, 'wb') as file:
+        pkl.dump((X_train, X_test, y_train, y_test, y_classes, bill_ls), file)
+
     return X_train, X_test, y_train, y_test, y_classes, bill_ls
 
 def preprocess_ct():
@@ -72,7 +76,6 @@ def preprocess_ct():
     return ct
 
 
-
 def MLP_pipeline_fit(X_train, y_train, out_path):
     """
     Defines a pipeline with the MLP Classifier (with the column transformer preprocessing),
@@ -87,12 +90,11 @@ def MLP_pipeline_fit(X_train, y_train, out_path):
                        'learning_rate_init': [0.0001, 0.001, 0.01]}]
     grid_MLP = GridSearchCV(estimator = MLP, param_grid = parameter_grid, cv=3, verbose = 1,                          
                             scoring = "balanced_accuracy")
-
     clf_pipeline_MLP = Pipeline(steps=[("preprocessor", ct), ("classifier", grid_MLP)])
     clf_pipeline_MLP.fit(X_train, y_train)
 
     with open(out_path, 'wb') as file:
-        cloudpickle.dump((clf_pipeline_MLP, ct), file)
+        cloudpickle.dump(clf_pipeline_MLP, file)
     return print("MLPClassifier finished fitting")
 
 
@@ -100,12 +102,12 @@ def main():
     models_folder = "out/models/"
     feature_path = "data/preprocessed/features.pkl"
     block_path = "data/preprocessed/block_array.pkl"
+    split_data_path = "data/preprocessed/split_data.pkl"
 
     X_train, X_test, y_train, y_test, y_classes, bill_ls = split_features(
-        feature_path = feature_path, block_path = block_path)
+        feature_path = feature_path, block_path = block_path, split_data_path=split_data_path)
 
     MLP_pipeline_fit(X_train, y_train, os.path.join(models_folder, "MLP_fit.pkl"))
-
 
 if __name__ == "__main__":
     main()
