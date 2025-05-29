@@ -10,3 +10,4 @@ pooch
 jupyter
 cloudpickle 
 imblearn
+shap

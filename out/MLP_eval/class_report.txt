@@ -1,0 +1,16 @@
+Classification report for the MLP classifier using:
+{'alpha': 0.001, 'learning_rate_init': 0.0001}
+
+              precision    recall  f1-score   support
+
+      failed       0.77      0.90      0.83      6123
+      passed       0.70      0.48      0.57      3062
+
+    accuracy                           0.76      9185
+   macro avg       0.74      0.69      0.70      9185
+weighted avg       0.75      0.76      0.74      9185
+
+Balanced Accuracy: 0.6866
+
+Number of training samples after undersampling: 36736
+Total number of samples after undersample: 45921

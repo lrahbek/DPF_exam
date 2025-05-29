@@ -3,12 +3,14 @@ import pathlib
 import pickle as pkl
 import cloudpickle 
 import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 import numpy as np
 import re
 from imblearn.under_sampling import RandomUnderSampler
 from sklearn.compose import ColumnTransformer, make_column_selector
 from sklearn.pipeline import Pipeline
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, balanced_accuracy_score, ConfusionMatrixDisplay
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.preprocessing import OneHotEncoder, LabelEncoder, LabelBinarizer, StandardScaler, RobustScaler
 from sklearn.neural_network import MLPClassifier
@@ -97,17 +99,65 @@ def MLP_pipeline_fit(X_train, y_train, out_path):
         cloudpickle.dump(clf_pipeline_MLP, file)
     return print("MLPClassifier finished fitting")
 
+def eval_MLP(model_path, split_data_path, eval_folder):
+    """ 
+    Retreive the fitted model and subsequent data and evaluate. A classification report, a confusion 
+    matrix and validation score and loss curves are saved to the the eval folder. 
+    """
+    with open(model_path, 'rb') as file:
+        clf_pipeline_MLP  = pkl.load(file)
+    with open(split_data_path, 'rb') as file:
+        X_train, X_test, y_train, y_test, y_classes, bill_ls = pkl.load(file)
+
+    #list of bills after under sampling: 
+    bill_ls_un = bill_ls[np.concat((X_train.index, X_test.index))]
+    n_un = len(bill_ls_un)
+    #predict test set 
+    y_pred = clf_pipeline_MLP.predict(X_test)
+    #retreive report and metrics and save 
+    report = f"Classification report for the MLP classifier using:\n{clf_pipeline_MLP.named_steps.classifier.best_params_}\n\n{classification_report(y_test, y_pred, target_names = y_classes)}\nBalanced Accuracy: {round(balanced_accuracy_score(y_test, y_pred), 4)}\n\nNumber of training samples after undersampling: {len(X_train.index)}\nTotal number of samples after undersample: {n_un}"
+    report_path = os.path.join(eval_folder, 'class_report.txt')
+    with open(report_path, 'w') as file: 
+        file.write(report)
+    #plot + save conf matrix
+    ConfusionMatrixDisplay.from_predictions(y_test, y_pred, display_labels=y_classes)
+    plt.savefig(os.path.join(eval_folder, "confusion_matrix.png"))
+    
+    #plot val score and loss
+    plt.figure(figsize = (12,6))
+    plt.subplot(1,2,1)
+    sns.lineplot(clf_pipeline_MLP.named_steps.classifier.best_estimator_.loss_curve_, color=sns.color_palette("viridis")[2])
+    plt.title("Loss Curve (MLP)")
+    plt.xlabel("Iterations")
+    plt.ylabel("Loss")
+    plt.subplot(1,2,2)
+    sns.lineplot(clf_pipeline_MLP.named_steps.classifier.best_estimator_.validation_scores_, color = sns.color_palette("viridis")[3])
+    plt.title("Validation scores (MLP)")
+    plt.xlabel("Iterations")
+    plt.ylabel("balanced accuracy")
+    sns.despine()
+    plt.savefig(os.path.join(eval_folder, 'training_curves.png'), bbox_inches='tight', dpi = 1000)
+
+    return print("MLP model evaluated")
+
+
 
 def main():
     models_folder = "out/models/"
     feature_path = "data/preprocessed/features.pkl"
     block_path = "data/preprocessed/block_array.pkl"
     split_data_path = "data/preprocessed/split_data.pkl"
+    eval_folder='out/MLP_eval'
 
     X_train, X_test, y_train, y_test, y_classes, bill_ls = split_features(
         feature_path = feature_path, block_path = block_path, split_data_path=split_data_path)
-
     MLP_pipeline_fit(X_train, y_train, os.path.join(models_folder, "MLP_fit.pkl"))
+
+    #evaluate 
+    eval_MLP(model_path = os.path.join(models_folder, "MLP_fit.pkl"),
+             split_data_path=split_data_path, 
+             eval_folder = eval_folder)
+
 
 if __name__ == "__main__":
     main()
