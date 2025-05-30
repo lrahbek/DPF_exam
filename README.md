@@ -21,6 +21,11 @@ Repository for the code made for the Data Science, Prediction, and Forecasting e
     ├── bill_classification.py
     ├── shap_values.py
     └── SHAP_plots.ipynb
+├── .gitignore
+├── LICENSE
+├── activate.sh
+├── requirements.txt
+└── setup.sh
 ```
 \
 \
