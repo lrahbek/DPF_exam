@@ -201,8 +201,8 @@ def extract_block_counts(bills_ide, positions_blocks, out_path):
 
 def main():
     #download data 
-    #download_shormccarty()
-    #download_chorus()
+    download_shormccarty()
+    download_chorus()
     #load data
     chorus_folder = "data/raw/chorus"
     bills = pd.read_parquet(os.path.join(chorus_folder, "bills.parquet"))
