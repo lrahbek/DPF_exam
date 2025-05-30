@@ -175,8 +175,10 @@ cython_debug/
 
 
 # own additions 
-data/*
-!data/.gitkeep
+data/preprocessed/*
+!data/preprocessed/.gitkeep
+data/raw/*
+!data/raw/.gitkeep
 git_setup.sh
 out/models/
 src/trash
