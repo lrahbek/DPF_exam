@@ -9,17 +9,17 @@ Repository for the code made for the Data Science, Prediction, and Forecasting e
 ```
 ├── data/
     ├── raw/
-    ├── preprocessed/
-    └── .gitkeep
+    └── preprocessed/
 ├── out/
     ├── MLP_eval/
     ├── figs/
+    ├── models/
     └── ideology_summary.txt
 ├── src/
     ├── data_preperation.py
     ├── eda.ipynb
     ├── bill_classification.py
-    ├── shap_plots.py
+    ├── shap_values.py
     └── SHAP_plots.ipynb
 ```
 \
